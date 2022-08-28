@@ -4,7 +4,9 @@ from selenium.webdriver.common.by import By
 from time import sleep
 import json
 
-driver = webdriver.Chrome()
+options = webdriver.ChromeOptions()
+# options.add_argument("headless")
+driver = webdriver.Chrome(options=options)
 driver.get(r"https://www.booking.com/index.vi.html?")
 
 # Data store
@@ -30,7 +32,9 @@ while has_next:
         sleep(1)
         driver.switch_to.window(driver.window_handles[-1])
         # =========== Crawling in new tab =============
-        hotel_name = driver.find_element(By.CLASS_NAME, "pp-header__title").text
+        title = driver.find_element(By.ID, "hp_hotel_name").text
+        hotel_name = title.split("\n")[-1]
+        stay_type = title.split("\n")[0]
         try:
             address_longlat = driver.find_element(By.ID, "hotel_header").get_attribute("data-atlas-latlng")
         except:
@@ -41,6 +45,7 @@ while has_next:
         description = driver.find_element(By.ID, "property_description_content").text
         facilities = [item.text for item in driver.find_elements(By.CLASS_NAME, "important_facility")]
         item["name"] = hotel_name
+        item["type"] = stay_type
         item["longlat"] = address_longlat
         item["address"] = address
         item["star"] = len(num_star)
@@ -52,7 +57,7 @@ while has_next:
         # ============       Close tab       ===========
         driver.close()
         driver.switch_to.window(driver.window_handles[0])
-        print(item)
+        print(f">> Crawled {item['name']}")
         data.append(item)
     # ========================= Select next page =======================
     pages = driver.find_elements(By.XPATH, "//div[@data-testid='pagination']/nav/div/div[2]/ol/li")
