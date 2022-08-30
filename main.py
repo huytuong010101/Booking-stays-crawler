@@ -99,48 +99,59 @@ while has_next:
                     neg_comment = ""
                     try:
                         comment_block = li.find_elements(By.XPATH, "//*[@id='review_list_page_container']/ul/li["+str(i+1)+"]/div/div[2]/div[2]/div[2]/div/div[1]/p")
-                        pos_icon = len(comment_block[0].get_attribute("class").split())
-                        if pos_icon > 1:
-                            pos_comment = comment_block[0].find_element(By.CLASS_NAME, "c-review__body").text
-                            review_item['comment'].append({"pos_cmt": pos_comment})
+                        icon = comment_block[0].find_elements(By.TAG_NAME, "span")[0]
+                        comment = comment_block[0].find_element(By.CLASS_NAME, "c-review__body").text
+                        if comment == "Không có bình luận nào cho đánh giá này":
+                            review_has_next = False
+                            break
+                        elif "c-review__prefix--color-green" in icon.get_attribute("class"):
+                            review_item['comment'].append({"pos_cmt": comment})
 
                         else:
-                            neg_comment = comment_block[0].find_element(By.CLASS_NAME, "c-review__body").text
-                            review_item['comment'].append({"neg_cmt": neg_comment})
+                            review_item['comment'].append({"neg_cmt": comment})
 
                     except Exception as e:
                         print(f"Error get cmt: {e}")
 
                     score = li.find_element(By.CLASS_NAME, "bui-review-score__badge").text
                     review_item['score'] = score
+                    # print(review_item)
                     reviews.append(review_item)
-            
+                if not review_has_next:
+                    break
                 try:
-                    review_pages = driver.find_element(By.XPATH, "//*[@id='review_list_page_container']/div[4]/div/div[1]/div/div[2]/div")
-                    for i in range(len(review_pages)):
-                        review_num_class = len(review_pages[i].get_attribute("class").split())
-                        
-                        if review_num_class == 1:
-                            continue
-
-                        if i == len(review_pages) - 1:
-                            review_has_next = False
-                            break
-                        # Else selection next page
-                        review_pages[i+1].click()
+                    review_pages = driver.find_elements(By.CLASS_NAME, "bui-pagination__item")
+                    if len(review_pages) == 0:
+                        print(">> Reach last review page")
+                        review_has_next = False
                         break
+                    for i in range(1, len(review_pages)-1):
+                        class_ = review_pages[i].get_attribute("class").split()
+                        if "bui-pagination__item--active" in class_:
+                            if i >= len(review_pages) - 3:
+                                print(">> Reach last review page")
+                                review_has_next = False
+                                break
+                            # Else selection next page
+                            
+                            review_pages[i+1].find_element(By.CLASS_NAME, "bui-pagination__link").click()
+                            break
                 except Exception as e:
                     print(f"Error {e}")
                     review_has_next = False
-            print(reviews)
+            print(f">> Get {len(reviews)} review")
             item["review"] = reviews
+            print(reviews)
         # ============       Close tab       ===========
 
 
         driver.close()
         driver.switch_to.window(driver.window_handles[0])
-        print(">> Crawled" + str(item['name']))
+        print(">> Done crawled " + str(item['name']))
         data.append(item)
+    # =========================== Save ==========================
+    with open("data.json", "w", encoding="utf-8") as f:
+        json.dump(data, f)
     # ========================= Select next page =======================
     pages = driver.find_elements(By.XPATH, "//div[@data-testid='pagination']/nav/div/div[2]/ol/li")
     for i in range(len(pages)):
@@ -157,8 +168,9 @@ while has_next:
         # Else selection next page
         pages[i+1].click()
         print(">> Select next page")
+        sleep(3)
         break
+    
 
-with open("data.json", "w", encoding="utf-8") as f:
-    json.dump(data, f)
+
 driver.close()
