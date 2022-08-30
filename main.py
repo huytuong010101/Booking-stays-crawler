@@ -116,7 +116,7 @@ while has_next:
                     reviews.append(review_item)
             
                 try:
-                    review_pages = driver.find_elements(By.XPATH, "//*[@id='review_list_page_container']/div[4]/div/div[1]/div/div[2]/div")
+                    review_pages = driver.find_element(By.XPATH, "//*[@id='review_list_page_container']/div[4]/div/div[1]/div/div[2]/div")
                     for i in range(len(review_pages)):
                         review_num_class = len(review_pages[i].get_attribute("class").split())
                         
