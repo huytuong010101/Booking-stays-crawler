@@ -1,6 +1,13 @@
 from selenium import webdriver
+import webbrowser 
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
+# from bs4 import BeautifulSoup
 from time import sleep
 import json
 
@@ -8,6 +15,7 @@ options = webdriver.ChromeOptions()
 # options.add_argument("headless")
 driver = webdriver.Chrome(options=options)
 driver.get(r"https://www.booking.com/index.vi.html?")
+wait = WebDriverWait(driver, 20)
 
 # Data store
 data = []
@@ -21,7 +29,7 @@ page_number = 0
 # Now loop all page
 while has_next:
     page_number += 1
-    print(f">> Now we on page {page_number}")
+    print('>> Now we on page' + str(page_number))
     # ========================= Crawl data in current page =======================
     # Loop all item in page
     for link in driver.find_elements(By.XPATH, "//a[@data-testid='title-link']"):
@@ -52,12 +60,84 @@ while has_next:
         item["rating"] = rating
         item["description"] = description
         item["facilities"] = facilities
+
+
         # TODO: #hanLHN Crawler review and rating
         item["review"] = []
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        sleep(3)
+        try:
+            btn_review = driver.find_element(By.XPATH, "//*[@id='guest-featured_reviews__horizontal-block']/div/div[9]/button")
+            btn_review.click()
+            check_btn_review = True
+        except:
+            check_btn_review = False
+            print("There's no review")
+
+        if check_btn_review:
+            try:
+                actions = ActionChains(driver)
+                element = driver.find_element_by_xpath("//*[@id='hp-reviews-sliding']/div[1]/div[2]")
+                actions.move_to_element(element).perform()
+                sleep(3)
+                review_pages = driver.find_elements(By.XPATH, "//*[@id='review_list_page_container']/div[4]/div/div[1]/div/div[2]/div")
+            except:
+                review_pages = []
+                print("There's no pagination")
+
+            if len(review_pages):
+                reviews = []
+                for i in range(len(review_pages)):
+                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                    sleep(2)
+                    elem = driver.find_element(By.XPATH, "//*[@id='review_list_page_container']/ul")
+                    all_li = elem.find_elements(By.CLASS_NAME, "review_list_new_item_block")                
+                    for i, li in enumerate(all_li):
+                        review_item = {}
+                        review_item['comment'] = []
+                        review_item['score'] = ""
+
+                        try:
+                            review_item['review_title'] = li.find_element(By.XPATH, "//*[@id='review_list_page_container']/ul/li["+str(i+1)+"]/div/div[2]/div[2]/div[1]/div/div[1]/h3").text
+                        except:
+                            review_item['review_title'] = ""
+
+                        try:
+                            comment_block = li.find_element(By.XPATH, "//*[@id='review_list_page_container']/ul/li["+str(i+1)+"]/div/div[2]/div[2]/div[2]/div/div[1]/p")
+                            pos_icon = comment_block.find_element(By.CLASS_NAME, "c-review__prefix c-review__prefix--color-green")
+                            pos_comment = comment_block.find_element(By.CLASS_NAME, "c-review__body").text
+                            pos = True
+                        except:
+                            pos_comment = ""
+                            pos = False
+                        review_item['comment'].append({"pos_cmt": pos_comment})
+
+                        try:
+                            comment_block = li.find_element(By.XPATH, "//*[@id='review_list_page_container']/ul/li["+str(i+1)+"]/div/div[2]/div[2]/div[2]/div/div[1]/p")
+                            neg_icon = comment_block.find_element(By.CLASS_NAME, "c-review__prefix")
+                            neg_comment = comment_block.find_element(By.CLASS_NAME, "c-review__body").text
+                        except:
+                            neg_comment = ""
+                        if pos == True:
+                            review_item['comment'].append({"neg_cmt": neg_comment})
+
+                        score = li.find_element(By.CLASS_NAME, "bui-review-score__badge").text
+                        review_item['score'] = score
+                        print(review_item['review_title'])
+                        reviews.append(review_item)
+
+                    nexts = driver.find_element(By.XPATH, "//*[@id='review_list_page_container']/div[4]/div/div[1]/div/div[3]")
+                    if i < len(review_pages) - 1:
+                        nexts.click()
+                print(reviews)
+                item["review"] = reviews
+        
         # ============       Close tab       ===========
+
+
         driver.close()
         driver.switch_to.window(driver.window_handles[0])
-        print(f">> Crawled {item['name']}")
+        print(">> Crawled" + str(item['name']))
         data.append(item)
     # ========================= Select next page =======================
     pages = driver.find_elements(By.XPATH, "//div[@data-testid='pagination']/nav/div/div[2]/ol/li")
@@ -69,12 +149,12 @@ while has_next:
         # Now is current select page
         # Break if the last page
         if i == len(pages) - 1:
-            print(f">> Have no next page")
+            print(">> Have no next page")
             has_next = False
             break
         # Else selection next page
         pages[i+1].click()
-        print(f">> Select next page")
+        print(">> Select next page")
         break
 
 with open("data.json", "w", encoding="utf-8") as f:
