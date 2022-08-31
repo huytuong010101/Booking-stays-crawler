@@ -38,7 +38,6 @@ while has_next:
             item = {}
             # Open item in new tab
             link.click()
-            sleep(1)
             driver.switch_to.window(driver.window_handles[-1])
             # =========== Crawling in new tab =============
             title = driver.find_element(By.ID, "hp_hotel_name").text
@@ -71,12 +70,17 @@ while has_next:
         try:
             btn_review = driver.find_element(By.XPATH, "//*[@id='guest-featured_reviews__horizontal-block']/div/div[10]/button")
             btn_review.click()
+            sleep(2)
             check_btn_review = True
         except Exception as e:
             check_btn_review = False
             print(f"Error: {e} \n There's no review")
 
         if check_btn_review:
+            # Change to vietnames review
+            driver.execute_script('document.querySelector("#review_lang_filter").querySelectorAll(".bui-dropdown-menu__button")[1].click()')
+            sleep(2)
+            #----------------------------
             reviews = []
 
             review_has_next = True
@@ -85,7 +89,6 @@ while has_next:
             while review_has_next:
                 review_page_number += 1
                 print("Review page: ", review_page_number)
-                sleep(3)
                 try:
                     elem = driver.find_element(By.XPATH, "//*[@id='review_list_page_container']/ul")
                     all_li = elem.find_elements(By.CLASS_NAME, "review_list_new_item_block")                
@@ -140,6 +143,7 @@ while has_next:
                             # Else selection next page
                             
                             review_pages[i+1].find_element(By.CLASS_NAME, "bui-pagination__link").click()
+                            sleep(2)
                             break
                 except Exception as e:
                     print(f"Error {e}")
