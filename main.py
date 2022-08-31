@@ -128,7 +128,7 @@ while has_next:
                     for i in range(1, len(review_pages)-1):
                         class_ = review_pages[i].get_attribute("class").split()
                         if "bui-pagination__item--active" in class_:
-                            if i >= len(review_pages) - 3:
+                            if i >= len(review_pages) - 3 or i == 2:
                                 print(">> Reach last review page")
                                 review_has_next = False
                                 break
