@@ -32,33 +32,37 @@ while has_next:
     # ========================= Crawl data in current page =======================
     # Loop all item in page
     for link in driver.find_elements(By.XPATH, "//a[@data-testid='title-link']"):
-        # Item data
-        item = {}
-        # Open item in new tab
-        link.click()
-        sleep(1)
-        driver.switch_to.window(driver.window_handles[-1])
-        # =========== Crawling in new tab =============
-        title = driver.find_element(By.ID, "hp_hotel_name").text
-        hotel_name = title.split("\n")[-1]
-        stay_type = title.split("\n")[0]
         try:
-            address_longlat = driver.find_element(By.ID, "hotel_header").get_attribute("data-atlas-latlng")
+            # Item data
+            item = {}
+            # Open item in new tab
+            link.click()
+            sleep(1)
+            driver.switch_to.window(driver.window_handles[-1])
+            # =========== Crawling in new tab =============
+            title = driver.find_element(By.ID, "hp_hotel_name").text
+            hotel_name = title.split("\n")[-1]
+            stay_type = title.split("\n")[0]
+            try:
+                address_longlat = driver.find_element(By.ID, "hotel_header").get_attribute("data-atlas-latlng")
+            except:
+                address_longlat = None
+            address = driver.find_element(By.XPATH, "//span[@data-node_tt_id='location_score_tooltip']").text
+            num_star = driver.find_elements(By.XPATH, "//span[@data-testid='rating-squares']/span")
+            rating = driver.find_element(By.XPATH, "//div[@data-testid='review-score-component']/div").text
+            description = driver.find_element(By.ID, "property_description_content").text
+            facilities = [item.text for item in driver.find_elements(By.CLASS_NAME, "important_facility")]
+            item["name"] = hotel_name
+            item["type"] = stay_type
+            item["longlat"] = address_longlat
+            item["address"] = address
+            item["star"] = len(num_star)
+            item["rating"] = rating
+            item["description"] = description
+            item["facilities"] = facilities
+        
         except:
-            address_longlat = None
-        address = driver.find_element(By.XPATH, "//span[@data-node_tt_id='location_score_tooltip']").text
-        num_star = driver.find_elements(By.XPATH, "//span[@data-testid='rating-squares']/span")
-        rating = driver.find_element(By.XPATH, "//div[@data-testid='review-score-component']/div").text
-        description = driver.find_element(By.ID, "property_description_content").text
-        facilities = [item.text for item in driver.find_elements(By.CLASS_NAME, "important_facility")]
-        item["name"] = hotel_name
-        item["type"] = stay_type
-        item["longlat"] = address_longlat
-        item["address"] = address
-        item["star"] = len(num_star)
-        item["rating"] = rating
-        item["description"] = description
-        item["facilities"] = facilities
+            continue
 
 
         # TODO: #hanLHN Crawler review and rating
@@ -84,39 +88,42 @@ while has_next:
                 review_page_number += 1
                 print("Review page: ", review_page_number)
                 sleep(3)
-                elem = driver.find_element(By.XPATH, "//*[@id='review_list_page_container']/ul")
-                all_li = elem.find_elements(By.CLASS_NAME, "review_list_new_item_block")                
-                for i, li in enumerate(all_li):
-                    review_item = {}
-                    review_item['comment'] = []
-                    review_item['score'] = ""
+                try:
+                    elem = driver.find_element(By.XPATH, "//*[@id='review_list_page_container']/ul")
+                    all_li = elem.find_elements(By.CLASS_NAME, "review_list_new_item_block")                
+                    for i, li in enumerate(all_li):
+                        review_item = {}
+                        review_item['comment'] = []
+                        review_item['score'] = ""
 
-                    try:
-                        review_item['review_title'] = li.find_element(By.XPATH, "//*[@id='review_list_page_container']/ul/li["+str(i+1)+"]/div/div[2]/div[2]/div[1]/div/div[1]/h3").text
-                    except:
-                        review_item['review_title'] = ""
-                    pos_comment = ""
-                    neg_comment = ""
-                    try:
-                        comment_block = li.find_elements(By.XPATH, "//*[@id='review_list_page_container']/ul/li["+str(i+1)+"]/div/div[2]/div[2]/div[2]/div/div[1]/p")
-                        icon = comment_block[0].find_elements(By.TAG_NAME, "span")[0]
-                        comment = comment_block[0].find_element(By.CLASS_NAME, "c-review__body").text
-                        if comment == "Không có bình luận nào cho đánh giá này":
-                            review_has_next = False
-                            break
-                        elif "c-review__prefix--color-green" in icon.get_attribute("class"):
-                            review_item['comment'].append({"pos_cmt": comment})
+                        try:
+                            review_item['review_title'] = li.find_element(By.XPATH, "//*[@id='review_list_page_container']/ul/li["+str(i+1)+"]/div/div[2]/div[2]/div[1]/div/div[1]/h3").text
+                        except:
+                            review_item['review_title'] = ""
+                        pos_comment = ""
+                        neg_comment = ""
+                        try:
+                            comment_block = li.find_elements(By.XPATH, "//*[@id='review_list_page_container']/ul/li["+str(i+1)+"]/div/div[2]/div[2]/div[2]/div/div[1]/p")
+                            icon = comment_block[0].find_elements(By.TAG_NAME, "span")[0]
+                            comment = comment_block[0].find_element(By.CLASS_NAME, "c-review__body").text
+                            if comment == "Không có bình luận nào cho đánh giá này":
+                                review_has_next = False
+                                break
+                            elif "c-review__prefix--color-green" in icon.get_attribute("class"):
+                                review_item['comment'].append({"pos_cmt": comment})
 
-                        else:
-                            review_item['comment'].append({"neg_cmt": comment})
+                            else:
+                                review_item['comment'].append({"neg_cmt": comment})
 
-                    except Exception as e:
-                        print(f"Error get cmt: {e}")
+                        except Exception as e:
+                            print(f"Error get cmt: {e}")
 
-                    score = li.find_element(By.CLASS_NAME, "bui-review-score__badge").text
-                    review_item['score'] = score
-                    # print(review_item)
-                    reviews.append(review_item)
+                        score = li.find_element(By.CLASS_NAME, "bui-review-score__badge").text
+                        review_item['score'] = score
+                        # print(review_item)
+                        reviews.append(review_item)
+                except:
+                    print(">>Cannot load review")
                 if not review_has_next:
                     break
                 try:
@@ -141,7 +148,6 @@ while has_next:
                     review_has_next = False
             print(f">> Get {len(reviews)} review")
             item["review"] = reviews
-            print(reviews)
         # ============       Close tab       ===========
 
 
