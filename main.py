@@ -11,6 +11,7 @@ import json
 
 options = webdriver.ChromeOptions()
 # options.add_argument("headless")
+options.add_argument("--log-level=3")
 driver = webdriver.Chrome(options=options)
 driver.get(r"https://www.booking.com/index.vi.html?")
 wait = WebDriverWait(driver, 20)
@@ -67,9 +68,6 @@ while has_next:
 
         # TODO: #hanLHN Crawler review and rating
         item["review"] = []
-        sleep(1)
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight / 3);")
-        sleep(1)
         try:
             btn_review = driver.find_element(By.XPATH, "//*[@id='guest-featured_reviews__horizontal-block']/div/div[10]/button")
             btn_review.click()
